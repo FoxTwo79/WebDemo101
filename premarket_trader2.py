@@ -23,11 +23,10 @@ import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Tuple, Optional
 
 import pandas as pd
-from dateutil import tz
 from dateutil.tz import tzutc, gettz
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from yahooquery import Ticker
@@ -42,10 +41,10 @@ logging.basicConfig(
 )
 
 # -------------------------
-# Config (tune as needed)
+# Config
 # -------------------------
-NASDAQ_FILE = "nasdaqlisted.txt"   # pipe-delimited; first column = Symbol
-OTHER_FILE = "otherlisted.txt"     # pipe-delimited; first column = ACT Symbol
+NASDAQ_FILE = "nasdaqlisted.txt"
+OTHER_FILE = "otherlisted.txt"
 UNIVERSE_CACHE = "all_tickers.csv"
 
 BATCH_SIZE = 80  # yahooquery multi-symbol batch
@@ -53,7 +52,7 @@ BATCH_SIZE = 80  # yahooquery multi-symbol batch
 # Real-time strategy rules
 MIN_PCT = 3.0
 MAX_PCT = 20.0
-MIN_PRE_VOL = 50_000
+MIN_PRE_VOL = 27_000
 
 # Optional news sentiment
 USE_NEWS = True
@@ -62,11 +61,11 @@ NEWS_POSITIVE_THRESHOLD = 0.10
 NEWS_MAX_WORKERS = 12
 NEWS_RETRIES = 1
 
-# Backtest rules (proxy for premarket)
+# Backtest rules
 BACKTEST_DAYS = 30
 BACKTEST_MIN_PCT = MIN_PCT
 BACKTEST_MAX_PCT = MAX_PCT
-BACKTEST_MIN_DAILY_VOL = 1_000_000  # liquidity proxy
+BACKTEST_MIN_DAILY_VOL = 1_000_000
 
 # -------------------------
 # Globals
@@ -92,19 +91,16 @@ def ensure_universe_cache() -> List[str]:
             syms = df["symbol"].dropna().astype(str).str.upper().tolist()
             logging.info(f"Loaded {len(syms)} symbols from cache.")
             return syms
-        else:
-            logging.warning("Universe cache exists but missing 'symbol' column; rebuilding.")
+        logging.warning("Universe cache exists but missing 'symbol' column; rebuilding.")
 
     logging.info(f"Reading input files: {NASDAQ_FILE} and {OTHER_FILE}")
     if not os.path.exists(NASDAQ_FILE) or not os.path.exists(OTHER_FILE):
         logging.error("Input files not found. Ensure nasdaqlisted.txt and otherlisted.txt exist.")
         return []
 
-    # Read pipe-delimited files (headers expected)
     nas = pd.read_csv(NASDAQ_FILE, sep="|", dtype=str, encoding="utf-8", errors="ignore")
     oth = pd.read_csv(OTHER_FILE, sep="|", dtype=str, encoding="utf-8", errors="ignore")
 
-    # Remove test issues if present
     if "Test Issue" in nas.columns:
         nas = nas[nas["Test Issue"].astype(str).str.upper() != "Y"]
     if "Test Issue" in oth.columns:
@@ -153,7 +149,7 @@ def _fetch_news_sentiment(symbol: str, hours_back: int) -> Tuple[str, Optional[f
             avg = _score_titles_vader(titles)
             positive = (avg is not None) and (avg > NEWS_POSITIVE_THRESHOLD)
             return symbol, avg, positive, len(titles)
-        except Exception as exc:
+        except Exception:
             tries += 1
             time.sleep(0.2)
     return symbol, None, False, 0
@@ -179,65 +175,37 @@ def enrich_with_news(df: pd.DataFrame) -> pd.DataFrame:
 
 # ---------- Real-time scan ----------
 def realtime_scan(symbols: List[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Query yahooquery.price, apply filters, and return:
-      (full_df_with_reasons, passed_df)
-    """
     logging.info(f"Starting real-time scan for {len(symbols)} symbols...")
     rows = []
     for batch in chunked(symbols, BATCH_SIZE):
         logging.info(
             f"Processing batch of {len(batch)} symbols: "
             f"(batch {symbols.index(batch[0]) // BATCH_SIZE + 1} of {((len(symbols)-1)//BATCH_SIZE)+1})"
-            f"{', '.join(batch[:5])}{'...' if len(batch) > 5 else ''} "
+            f"{', '.join(batch[:5])}{'...' if len(batch) > 5 else ''}"
         )
         try:
             tk = Ticker(" ".join(batch))
             price_map = tk.price
         except Exception as exc:
-            logging.warning(f"Batch request failed: {exc}; sleeping briefly and continuing.")
-            time.sleep(1.0)
-            # attempt one-by-one fallback
+            logging.warning(f"Batch request failed: {exc}; falling back to empty dict.")
             price_map = {}
 
         for s in batch:
-            p = {}
-            try:
-                if isinstance(price_map, dict):
-                    p = price_map.get(s, {}) or {}
-                else:
-                    # sometimes price_map is single-dict when batch size == 1
-                    p = {}
-            except Exception:
-                p = {}
-
-            if not isinstance(p, dict):
-                rows.append({
-                    "timestamp_utc": now_utc_iso(),
-                    "ticker": s,
-                    "pre_market_price": None,
-                    "regular_prev_close": None,
-                    "pre_change_pct": None,
-                    "pre_volume": None,
-                    "reason": "Bad price payload",
-                    "meets_filter": False
-                })
-                continue
-
-            pre_pct = p.get("preMarketChangePercent")
-            pre_vol = p.get("preMarketVolume")
+            p = price_map.get(s, {}) if isinstance(price_map, dict) else {}
+            pre_vol = p.get("regularMarketVolume")
             pre_price = p.get("preMarketPrice")
             prev_close = p.get("regularMarketPreviousClose") or p.get("previousClose")
 
-            reason = None
+            pre_pct = (float(pre_price) - float(prev_close)) / float(prev_close) * 100 if pre_price and prev_close else None
             meets = True
+            reason = "Pass"
             if pre_pct is None:
                 meets = False
                 reason = "No pre-market data"
             elif not (MIN_PCT <= pre_pct <= MAX_PCT):
                 meets = False
                 reason = f"Change {pre_pct:.2f}% out of range"
-            elif pre_vol is None or (isinstance(pre_vol, (int, float)) and pre_vol < MIN_PRE_VOL):
+            elif pre_vol is None or pre_vol < MIN_PRE_VOL:
                 meets = False
                 reason = f"Volume too low ({pre_vol})"
 
@@ -248,34 +216,20 @@ def realtime_scan(symbols: List[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
                 "regular_prev_close": prev_close,
                 "pre_change_pct": pre_pct,
                 "pre_volume": pre_vol,
-                "reason": "Pass" if meets else reason,
-                "meets_filter": bool(meets),
+                "reason": reason,
+                "meets_filter": meets,
             })
-
-        # polite pause between batches
         time.sleep(0.25)
 
     full = pd.DataFrame(rows)
-    passed = full[full["meets_filter"] == True].copy()
-
-    if USE_NEWS and not passed.empty:
-        passed = enrich_with_news(passed)
-        # keep if positive or no-news (if no articles found we keep by default)
-        passed = passed[(passed["positive_news"] == True) | (passed["news_articles_used"].fillna(0) == 0)]
-
+    passed = full[full["meets_filter"]].copy()
     return full, passed
 
 
-# ---------- Backtest (proxy) ----------
+# ---------- Backtest ----------
 def backtest(symbols: List[str], days: int = BACKTEST_DAYS) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Proxy pre-market gap with open-gap vs prior close.
-    Picks: BACKTEST_MIN_PCT <= gap% <= BACKTEST_MAX_PCT and daily volume >= BACKTEST_MIN_DAILY_VOL.
-    P/L: buy at open, sell at close (same day).
-    """
     logging.info(f"Starting backtest for {len(symbols)} symbols, lookback {days} days...")
     period_days = max(days + 10, 60)
-    # fetch history - note: large symbol lists may cause failures; consider sampling if rate-limited
     try:
         tk = Ticker(" ".join(symbols))
         hist = tk.history(period=f"{period_days}d", interval="1d")
@@ -287,9 +241,8 @@ def backtest(symbols: List[str], days: int = BACKTEST_DAYS) -> Tuple[pd.DataFram
         logging.warning("No historical data returned for backtest.")
         return pd.DataFrame(), pd.DataFrame()
 
-    # Normalize historical DataFrame to columns: ticker, date, open, close, volume
+    # Normalize historical DataFrame
     if isinstance(hist, dict):
-        # convert dict-of-lists to DataFrame
         rows = []
         for sym, recs in hist.items():
             df_sym = pd.DataFrame(recs)
@@ -298,36 +251,21 @@ def backtest(symbols: List[str], days: int = BACKTEST_DAYS) -> Tuple[pd.DataFram
             df_sym["ticker"] = sym
             rows.append(df_sym)
         hist_df = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
-    elif isinstance(hist, pd.DataFrame):
-        hist_df = hist.reset_index()
-        # if Yahoo returned MultiIndex (symbol, date), ensure 'symbol' col exists
-        if "symbol" not in hist_df.columns and isinstance(hist.index, pd.MultiIndex):
-            # attempt to extract from index
-            hist_df = hist.reset_index()
     else:
-        hist_df = pd.DataFrame()
+        hist_df = hist.reset_index()
 
     if hist_df.empty:
         logging.warning("Historical DataFrame empty after normalization.")
         return pd.DataFrame(), pd.DataFrame()
 
-    # Ensure date column is present
     if "date" not in hist_df.columns:
-        # some responses use 'indexed' or DateTime index; try to infer
-        if hist_df.index.name == "date":
-            hist_df = hist_df.reset_index()
-        else:
-            hist_df["date"] = pd.to_datetime(hist_df.get("formatted_date") or hist_df.get("datetime") or pd.NaT)
+        hist_df["date"] = pd.to_datetime(hist_df.get("formatted_date") or hist_df.get("datetime") or pd.NaT)
 
-    # Normalize column names
     for col in ("open", "close", "volume"):
-        if col not in hist_df.columns:
-            # try uppercase variants
-            if col.upper() in hist_df.columns:
-                hist_df[col] = hist_df[col.upper()]
+        if col not in hist_df.columns and col.upper() in hist_df.columns:
+            hist_df[col] = hist_df[col.upper()]
 
     hist_df = hist_df.rename(columns={"symbol": "ticker"})
-    # Ensure date is datetime with UTC
     hist_df["date"] = pd.to_datetime(hist_df["date"], errors="coerce")
     hist_df = hist_df.dropna(subset=["date", "ticker", "open", "close", "volume"])
     hist_df["date"] = hist_df["date"].dt.tz_localize(tzutc(), ambiguous='NaT', nonexistent='NaT')
@@ -335,7 +273,6 @@ def backtest(symbols: List[str], days: int = BACKTEST_DAYS) -> Tuple[pd.DataFram
     picks_rows = []
     day_rows = []
 
-    # compute per-ticker gaps and returns
     for ticker, g in hist_df.groupby("ticker"):
         g = g.sort_values("date").reset_index(drop=True)
         if len(g) < 2:
@@ -413,10 +350,13 @@ def main():
             logging.warning("[Backtest] No picks found; consider widening thresholds.")
         return
 
-    # Real-time analysis
     ist_now = get_current_ist().strftime("%Y-%m-%d %H:%M:%S %Z")
     logging.info(f"[Real-time] IST now: {ist_now}. Scanning {len(symbols)} symbols...")
     full, passed = realtime_scan(symbols)
+
+    if USE_NEWS:
+        passed = enrich_with_news(passed)
+
     full.to_csv("analysis_full.csv", index=False)
     passed.to_csv("analysis_passed.csv", index=False)
     logging.info(f"[Real-time] Saved analysis_full.csv ({len(full)} rows).")
