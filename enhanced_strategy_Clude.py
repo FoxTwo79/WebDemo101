@@ -15,6 +15,10 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 class EnhancedPreMarketMomentumStrategy:
     def __init__(self, config_path: str = None):
+        # --- CONFIGURATION (auto-mod enabled) ---
+        # All strategy parameters are set in self.config below.
+        # To auto-modify, update values here or pass a config file.
+        # This controls universe, filters, data fetch, sentiment, trading rules, logging, and outputs.
         """
         Enhanced Pre-Market Momentum Strategy combining both approaches
         
@@ -23,64 +27,64 @@ class EnhancedPreMarketMomentumStrategy:
         """
         # Default configuration
         self.config = {
-            "strategy_name": "Enhanced Pre-Market Gainers Momentum (Paper Trading)",
+            "strategy_name": "Enhanced Pre-Market Gainers Momentum (Paper Trading)",  # Name of the strategy
             "universe": {
-                "sources": [
-                    {"file": "nasdaqlisted.txt", "exchange": "NASDAQ"},
-                    {"file": "otherlisted.txt", "exchange": "NYSE, AMEX, Regional"}
+                "sources": [  # List of ticker sources
+                    {"file": "nasdaqlisted.txt", "exchange": "NASDAQ"},  # NASDAQ tickers file
+                    {"file": "otherlisted.txt", "exchange": "NYSE, AMEX, Regional"}  # Other exchanges
                 ]
             },
             "filters": {
-                "session": "pre-market",
+                "session": "pre-market",  # Which market session to scan
                 "percentage_change": {
-                    "min": 5.0,
-                    "max": 15.0,
-                    "comparison_basis": "pre_market_open_price"
+                    "min": 5.0,  # Minimum % change for filter
+                    "max": 15.0, # Maximum % change for filter
+                    "comparison_basis": "pre_market_open_price"  # Basis for % change calculation
                 },
-                "ignore_below": 5.0,
-                "sort": "descending_percentage_change",
+                "ignore_below": 5.0,  # Ignore stocks below this price
+                "sort": "descending_percentage_change",  # Sort order for candidates
                 "min_volume": 10000,  # Minimum pre-market volume
-                "relative_volume_min": 2.0  # At least 2x average volume
+                "relative_volume_min": 2.0  # Minimum relative volume (vs average)
             },
             "data_fetch": {
-                "lookback_days": 5,
-                "batch_size": 80,
-                "max_workers": 16,
-                "retries": 2,
-                "delay_between_batches": 0.5
+                "lookback_days": 5,  # Days of historical data to fetch
+                "batch_size": 80,    # Number of tickers per batch for API calls
+                "max_workers": 16,   # Max threads for parallel fetch
+                "retries": 2,        # Number of retries for API calls
+                "delay_between_batches": 0.5  # Delay (seconds) between batches
             },
             "news_sentiment": {
-                "enabled": True,
-                "lookback_hours": 108,
-                "positive_threshold": 0.1,
-                "max_workers": 16,
-                "retries": 2
+                "enabled": True,         # Enable news sentiment analysis
+                "lookback_hours": 108,   # How many hours back to fetch news
+                "positive_threshold": 0.1, # Threshold for positive sentiment
+                "max_workers": 16,       # Max threads for news fetch
+                "retries": 2             # Number of retries for news fetch
             },
             "trade_rules": {
-                "buy_time_ist": "18:00",
-                "sell_time_ist": "18:55",
+                "buy_time_ist": "18:00",   # Buy time in IST
+                "sell_time_ist": "18:55",  # Sell time in IST
                 "position_sizing": {
-                    "type": "fixed_amount",
-                    "amount_usd": 1000
+                    "type": "fixed_amount", # Position sizing method
+                    "amount_usd": 1000      # Amount per position in USD
                 },
-                "order_type": "market",
-                "max_positions": 5
+                "order_type": "market",    # Order type for trades
+                "max_positions": 5         # Max number of positions to trade
             },
             "logging": {
-                "fields": [
+                "fields": [  # Fields to log for each trade
                     "ticker", "entry_price", "exit_price", "percentage_gain_loss",
                     "pnl_usd", "last_3_days_percentage_changes", "premarket_change",
                     "news_sentiment", "relative_volume", "market_cap"
                 ],
                 "reporting": {
-                    "frequency": "daily",
-                    "cumulative_tracking": True
+                    "frequency": "daily",           # How often to report
+                    "cumulative_tracking": True     # Track cumulative results
                 }
             },
             "output_files": {
-                "candidates": "trade_candidates.csv",
-                "results": "trade_results.csv",
-                "daily_log": "premarket_log.csv"
+                "candidates": "trade_candidates.csv", # File for trade candidates
+                "results": "trade_results.csv",       # File for trade results
+                "daily_log": "premarket_log.csv"      # File for daily logs
             }
         }
         

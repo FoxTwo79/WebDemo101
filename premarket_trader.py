@@ -1,3 +1,7 @@
+"""
+Premarket trading analysis script (Agent Mode).
+Loads tickers, scans premarket data, applies filters, enriches with news sentiment, and simulates trades.
+"""
 import os
 import re
 import time
@@ -13,6 +17,17 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 # -------------------------
 # Config
 # -------------------------
+############################################################
+# --- Trading and analysis configuration ---
+# All configurable parameters for the strategy are set here.
+# To enable auto-modification, simply change values below or
+# load from external sources if needed. This section controls
+# filtering, batch sizes, trading times, file outputs, and more.
+############################################################
+MIN_PCT = 5.0  # Minimum % change for filter
+MAX_PCT = 15.0 # Maximum % change for filter
+LOOKBACK_DAYS = 5  # Days of historical data to fetch
+BATCH_SIZE = 80     # Number of tickers per batch for API calls
 NASDAQ_FILE = "nasdaqlisted.txt"
 OTHER_FILE = "otherlisted.txt"
 
@@ -40,11 +55,13 @@ _analyzer = SentimentIntensityAnalyzer()
 # -------------------------
 # Helpers
 # -------------------------
+## Get current time in IST timezone
 def get_current_ist():
     ist = tz.gettz("Asia/Kolkata")
     return datetime.now(ist)
 
 def read_tickers_from_file(path: str) -> List[str]:
+    """Read tickers from a file, ignoring comments and extracting valid symbols."""
     tickers = []
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
@@ -67,10 +84,12 @@ def read_tickers_from_file(path: str) -> List[str]:
     return tickers
 
 def chunk_list(lst, n):
+    """Yield successive n-sized chunks from list."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
 def compute_close_to_close_pct(close_series: pd.Series, n_changes: int = 3) -> List[float]:
+    """Compute last n close-to-close percent changes from a price series."""
     closes = close_series.dropna()
     if len(closes) < (n_changes + 1):
         return []
@@ -80,9 +99,11 @@ def compute_close_to_close_pct(close_series: pd.Series, n_changes: int = 3) -> L
 # -------------------------
 # Pre-market scanner
 # -------------------------
+## Scan tickers for premarket price and filter by % change
 def scan_premarket(ticker_list: List[str]) -> pd.DataFrame:
     results = []
     now = datetime.now(timezone.utc).isoformat()
+    # Progress logging
     total_tickers = len(ticker_list)
     print(f"Starting premarket scan for {total_tickers} tickers...")
     chunk_num = 0
@@ -166,6 +187,7 @@ def scan_premarket(ticker_list: List[str]) -> pd.DataFrame:
 # -------------------------
 # News Sentiment
 # -------------------------
+## Score news headlines for sentiment using VADER
 def score_headlines_vader(titles: List[str]) -> Optional[float]:
     if not titles:
         return None
@@ -173,6 +195,7 @@ def score_headlines_vader(titles: List[str]) -> Optional[float]:
     return sum(scores) / len(scores) if scores else None
 
 def fetch_and_score_news(ticker: str,
+    """Fetch news for ticker, score sentiment, and return summary."""
                          hours_back: int = NEWS_LOOKBACK_HOURS,
                          retries: int = NEWS_RETRIES) -> Tuple[str, Optional[float], bool, int]:
     cutoff = datetime.utcnow().timestamp() - hours_back * 3600
@@ -197,6 +220,7 @@ def fetch_and_score_news(ticker: str,
     return (ticker, None, False, 0)
 
 def enrich_with_news_parallel(df_filtered: pd.DataFrame) -> pd.DataFrame:
+    """Enrich filtered DataFrame with news sentiment scores in parallel."""
     if df_filtered.empty:
         df_filtered["news_avg_compound"] = None
         df_filtered["news_articles_used"] = 0
@@ -217,6 +241,7 @@ def enrich_with_news_parallel(df_filtered: pd.DataFrame) -> pd.DataFrame:
 # -------------------------
 # Trading simulation
 # -------------------------
+## Main analysis pipeline: load, scan, filter, enrich, save
 def run_analysis():
     print("Loading tickers from files...")
     tickers = read_tickers_from_file(NASDAQ_FILE) + read_tickers_from_file(OTHER_FILE)
@@ -238,6 +263,7 @@ def run_analysis():
     print(f"Analysis complete. {len(final)} candidates saved to {CANDIDATES_FILE}.")
 
 def run_paper_trades():
+    """Simulate paper trades for filtered candidates and save results."""
     if not os.path.exists(CANDIDATES_FILE):
         print("No candidates file found. Run analysis first.")
         return
@@ -270,6 +296,7 @@ def run_paper_trades():
 # -------------------------
 # Main
 # -------------------------
+## Entry point: run analysis, wait for trading time, then simulate trades
 if __name__ == "__main__":
     now_ist = get_current_ist()
     run_analysis()
