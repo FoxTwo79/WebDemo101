@@ -1,0 +1,9 @@
+2025-08-14 11:02:34,465 - INFO - Starting full pipeline execution...
+2025-08-14 11:02:34,465 - INFO - Loading tickers from files...
+2025-08-14 11:02:34,465 - WARNING - File not found: nasdaqlisted.txt
+2025-08-14 11:02:34,465 - WARNING - File not found: otherlisted.txt
+2025-08-14 11:02:34,465 - INFO - Loaded 0 NASDAQ tickers
+2025-08-14 11:02:34,465 - INFO - Loaded 0 other tickers
+2025-08-14 11:02:34,465 - INFO - Total unique tickers: 0
+2025-08-14 11:02:34,465 - ERROR - No tickers found
+2025-08-14 11:02:34,466 - INFO - Waiting 87.4 minutes until trading time (18:00:00)
