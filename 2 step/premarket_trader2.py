@@ -31,8 +31,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 # -------------------------
 class Config:
     # File paths
-    NASDAQ_FILE = "nasdaqlisted.txt"
-    OTHER_FILE = "otherlisted.txt"
+    NASDAQ_FILE = "../nasdaqlisted.txt"
+    OTHER_FILE = "../otherlisted.txt"
     OUTPUT_CSV = "premarket_log.csv"
     CANDIDATES_FILE = "trade_candidates.csv"
     RESULTS_FILE = "trade_results.csv"
