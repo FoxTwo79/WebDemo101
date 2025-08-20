@@ -97,7 +97,7 @@ class PreMarketScanner:
         tickers = self.read_tickers()
         print(f"Loaded {len(tickers)} tickers for scanning...")
 
-        tasks = [self.check_ticker(t) for t in tickers[:1100]]  # limit
+        tasks = [self.check_ticker(t) for t in tickers[:1700]]  # limit
         results = await asyncio.gather(*tasks)
 
         for res in results:
