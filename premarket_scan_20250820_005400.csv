@@ -1,0 +1,4 @@
+ticker,premkt_open,premkt_last,premkt_change_pct,premkt_volume,daily_changes,market_cap,sector,industry,scan_time,bullish_streak
+SHIM,2.62,2.7,3.05,3203,"[np.float64(13.27), np.float64(11.72), np.float64(4.12)]",98060608,Industrials,Engineering & Construction,01:01:01,True
+XBP,0.54,0.57,5.81,0,"[np.float64(12.47), np.float64(9.7), np.float64(6.32)]",69240432,Technology,Software - Infrastructure,01:01:20,True
+KOSS,6.26,6.65,6.23,83076,"[np.float64(4.02), np.float64(7.91), np.float64(5.54)]",60755184,Technology,Consumer Electronics,01:02:03,True
