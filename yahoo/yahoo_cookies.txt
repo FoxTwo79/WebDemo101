@@ -1,0 +1,4 @@
+#LWP-Cookies-2.0
+Set-Cookie3: A1="d=AQABBEMrqGgCENAJs1_v01TTOVhv50NoSrYFEgEBAQF8qWiyaFkWyyMA_eMCAA&S=AQAAAusQNxOZn1vyTZwHZonFeFM"; path="/"; domain=".yahoo.com"; path_spec; domain_dot; secure; expires="2026-08-22 14:33:08Z"; HttpOnly=None; SameSite=Lax; version=0
+Set-Cookie3: A3="d=AQABBEMrqGgCENAJs1_v01TTOVhv50NoSrYFEgEBAQF8qWiyaFkWyyMA_eMCAA&S=AQAAAusQNxOZn1vyTZwHZonFeFM"; path="/"; domain=".yahoo.com"; path_spec; domain_dot; secure; expires="2026-08-22 14:33:08Z"; HttpOnly=None; SameSite=None; version=0
+Set-Cookie3: A1S="d=AQABBEMrqGgCENAJs1_v01TTOVhv50NoSrYFEgEBAQF8qWiyaFkWyyMA_eMCAA&S=AQAAAusQNxOZn1vyTZwHZonFeFM"; path="/"; domain=".yahoo.com"; path_spec; domain_dot; secure; discard; SameSite=Lax; version=0
