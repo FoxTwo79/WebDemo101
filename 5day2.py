@@ -97,10 +97,18 @@ def scan_stock(ticker, n_days=5, threshold=6.0):
         closes = recent['Close'].values
         baseline = closes[0]
 
-        # Check consecutive gains
+        # # Check consecutive gains
+        # changes = []
+        # for i in range(1, len(closes)):
+        #     change = ((closes[i] - baseline) / baseline) * 100
+        #     changes.append(round(change, 2))
+        #     if change < threshold:
+        #         return None
+
         changes = []
         for i in range(1, len(closes)):
-            change = ((closes[i] - baseline) / baseline) * 100
+            prev_close = closes[i-1]
+            change = ((closes[i] - prev_close) / prev_close) * 100
             changes.append(round(change, 2))
             if change < threshold:
                 return None
@@ -122,8 +130,9 @@ def scan_stock(ticker, n_days=5, threshold=6.0):
         return None
 
 def main():
-    N_DAYS = 4
-    THRESHOLD = 6.0
+    N_DAYS = 3
+    THRESHOLD = 5.0
+    # MAX_STOCKS = 1000  # adjust as needed
     MAX_STOCKS = 7728  # adjust as needed
 
     print("Loading tickers...")
