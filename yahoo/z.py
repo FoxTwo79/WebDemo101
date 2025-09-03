@@ -28,10 +28,10 @@ def get_crumb_with_selenium_fixed():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
-    # Create a truly unique temp directory with random name
-    random_id = random.randint(1000, 9999)
-    temp_dir = f"/tmp/chrome_temp_{random_id}"
-    os.makedirs(temp_dir, exist_ok=True)
+    # Create a truly unique temp directory using tempfile and uuid
+    import uuid
+    unique_id = uuid.uuid4().hex
+    temp_dir = tempfile.mkdtemp(prefix=f"chrome_temp_{unique_id}_")
     chrome_options.add_argument(f"--user-data-dir={temp_dir}")
     
     try:
