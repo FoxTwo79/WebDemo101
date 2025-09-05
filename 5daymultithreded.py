@@ -133,7 +133,7 @@ def main():
     N_DAYS = 3
     THRESHOLD = 5.0
     MAX_STOCKS = 7728  # adjust as needed
-    MAX_WORKERS = 20  # Number of threads to use - adjust based on your system
+    MAX_WORKERS = 40  # Number of threads to use - adjust based on your system
     
     print("Loading tickers...")
     tickers = load_tickers()

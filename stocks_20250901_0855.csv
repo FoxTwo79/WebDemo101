@@ -1,0 +1,4 @@
+Ticker,Day-1 Price,Day-1 Change %,Day-1 Volume,Day-2 Price,Day-2 Change %,Day-2 Volume,Day-3 Price,Day-3 Change %,Day-3 Volume,Day-4 Price,Day-4 Change %,Day-4 Volume,Current Price,Current Volume,RSI,VWAP,PremarketFlag
+NTHI,6.1,5.26%,66500,6.45,5.74%,30900,6.98,8.22%,61900,7.41,6.23%,101100,7.41,101100,84.77,5.34,None
+RSLS,8.12,7.98%,40977,12.8,57.64%,10939690,15.68,22.5%,3380919,nan,nan%,0,nan,0,71.84,nan,None
+SKBL,0.54,12.5%,844100,0.82,51.85%,103004800,0.91,10.98%,5762500,1.05,15.38%,6323800,1.05,6323800,81.93,1.48,None
